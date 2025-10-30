@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: agrolink_mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # MQTT
+      - "9001:9001"   # websocket (si se habilita)
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+
+  flask:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: agrolink_flask
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    # Persistir la base de datos en ./data en el host
+    volumes:
+      - ./data:/app
+    depends_on:
+      - mosquitto
+    environment:
+      - FLASK_ENV=development
+
+  mqtt_bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.bridge
+    container_name: agrolink_bridge
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+      - flask
+    environment:
+      - BROKER=mosquitto
+      - PORT=1883
+      - SERVER_URL=http://flask:5000/datos

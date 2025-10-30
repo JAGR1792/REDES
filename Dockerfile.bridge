@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY requirements.txt /app/requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+  && pip install --no-cache-dir -r /app/requirements.txt \
+  && apt-get remove -y build-essential \
+  && apt-get autoremove -y \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copia solo el puente (y el requirements ya copiado)
+COPY mqtt_bridge.py /app/mqtt_bridge.py
+
+# Valores por defecto (se pueden sobrescribir desde docker-compose)
+ENV BROKER=mosquitto
+ENV PORT=1883
+ENV TOPIC=dht22/datos/+
+ENV SERVER_URL=http://flask:5000/datos
+
+CMD ["python", "mqtt_bridge.py"]
